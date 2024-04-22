@@ -1,12 +1,10 @@
 import * as React from "react";
-import { Loader2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { usePokemon } from "@/context";
+import { LoadingButton } from "@/components";
 import Pokedex from "@/components/blocs/Pokedex";
 import { POKEMON_TYPES } from "@/contants/pokemon-types";
-import InfiniteScroll from "@/components/ui/infinite-scroll";
-import { LoadingButton } from "@/components";
 
 const INITIAL_LIMIT = 50;
 
@@ -53,21 +51,35 @@ export const PokedexPage = () => {
   React.useEffect(() => {
     setLoading(true);
     setFiltered(
-      db
-        .filter((pokemon) => {
+      allPokemons
+        .filter((p) => {
           if (selectedTypes.length === 0) return true; // No type filter applied
+
+          const pokemon = db.find((pokemon) => pokemon.name === p.name);
+
+          if (!pokemon) return false;
+
           return selectedTypes.every((type) =>
             pokemon.types.some((pt) => pt.name === type.name)
           );
         })
-        .filter((pokemon) => {
+        .filter((p) => {
+          const pokemon = db.find((pokemon) => pokemon.name === p.name);
+
+          if (!pokemon) return false;
+
           const height = pokemon.height;
+
           return (
             (!minHeight || height >= minHeight) &&
             (!maxHeight || height <= maxHeight)
           );
         })
-        .filter((pokemon) => {
+        .filter((p) => {
+          const pokemon = db.find((pokemon) => pokemon.name === p.name);
+
+          if (!pokemon) return false;
+
           const weight = pokemon.weight;
           return (
             (!minWeight || weight >= minWeight) &&
@@ -80,6 +92,7 @@ export const PokedexPage = () => {
 
     setLoading(false);
   }, [
+    allPokemons,
     limit,
     search,
     minHeight,
@@ -94,7 +107,7 @@ export const PokedexPage = () => {
       <Pokedex pokemons={filtered} />
 
       <div className="flex justify-center w-full py-8">
-        <LoadingButton disabled={!hasMore} loading={loading}>
+        <LoadingButton onClick={next} disabled={!hasMore} loading={loading}>
           Load more
         </LoadingButton>
       </div>
