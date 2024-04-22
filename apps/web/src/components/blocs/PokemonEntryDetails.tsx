@@ -1,22 +1,73 @@
 import "react-svg-radar-chart/build/css/index.css";
 
+import React from "react";
 import RadarChart from "react-svg-radar-chart";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   colorByStat,
   colorByType,
   formatStatName,
 } from "@/contants/pokemon-color";
+import { useAuth } from "@/context";
 import { PokemonStat } from "@/shared/types/pokemon";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { trainerCollectionQuery } from "@/routes/loaders/trainers.loader";
 import { PokemonEvolutions } from "@/components/blocs/PokemonEvolutions";
-import { Card, CardContent, CardHeader, Separator } from "@/components/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Separator,
+} from "@/components/ui";
+import { EllipsisVertical } from "lucide-react";
+import { stopPropagation } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { TrainerService } from "@/shared/services";
 
 const PokemonEntryDetails = ({ pokemon, evolutions }: any) => {
-  const [showShiny] = useLocalStorage<boolean>(`shiny_${pokemon.name}`, false);
+  const {
+    state: { user },
+  } = useAuth();
+  const { toast } = useToast();
+  const [showShiny, setShowShiny] = useLocalStorage<boolean>(
+    `shiny_${pokemon.name}`,
+    false
+  );
+
+  const [isHovered, setIsHovered] = React.useState(false);
+
+  const { data: collection, refetch } = useQuery({
+    ...trainerCollectionQuery(user?.id ?? "1"),
+    refetchInterval: 1000 * 60 * 5,
+  });
+
+  const toggleHover = () => setIsHovered(!isHovered);
+
+  const findInCollection = (pokemonId?: string) =>
+    collection?.find((c) => c.pokemonId === pokemonId);
+
+  const [isCaught, setIsCaught] = React.useState(
+    findInCollection(pokemon?.id)?.caught
+  );
+
+  const [isEncountered, setIsEncountered] = React.useState(
+    findInCollection(pokemon?.id)?.encountered
+  );
 
   const renderShinySprite = (pokemon: any) =>
     pokemon?.sprites.versions["generation-v"]["black-white"].front_shiny;
+
+  React.useEffect(() => {
+    setIsCaught(findInCollection(pokemon?.id)?.caught);
+    setIsEncountered(findInCollection(pokemon?.id)?.encountered);
+  }, [collection]);
 
   const transformStats = (stats: PokemonStat[]) => {
     const result = {
@@ -61,8 +112,117 @@ const PokemonEntryDetails = ({ pokemon, evolutions }: any) => {
     return description;
   };
 
+  const handleCaughtClick = async (e: any) => {
+    stopPropagation(e);
+
+    let record = findInCollection(pokemon?.id);
+
+    if (!record) {
+      await TrainerService.addPokemonRecord(user!.id, pokemon!.id, false, true);
+    } else {
+      record = await TrainerService.updatePokemonRecord(
+        user!.id,
+        pokemon!.id,
+        record.encountered,
+        !record.caught
+      );
+    }
+
+    await refetch();
+
+    toast({
+      title: "Pokemon Caught",
+      description: `You ${isCaught ? "removed" : "added"} ${
+        pokemon?.name
+      } to your collection`,
+    });
+  };
+
+  const handleEncounteredClick = async (e: any) => {
+    stopPropagation(e);
+
+    let record = findInCollection(pokemon?.id);
+
+    if (!record) {
+      await TrainerService.addPokemonRecord(user!.id, pokemon!.id, true, false);
+    } else {
+      record = await TrainerService.updatePokemonRecord(
+        user!.id,
+        pokemon!.id,
+        !record.encountered,
+        record.caught
+      );
+    }
+
+    await refetch();
+
+    toast({
+      title: "Pokemon Encountered",
+      description: `You ${isCaught ? "removed" : "added"} ${
+        pokemon?.name
+      } to your collection`,
+    });
+  };
+
+  const renderPokeballImage = () => {
+    if (isCaught)
+      return (
+        <img src={`/pokeball_caught.png`} className="m-1 h-[16px] w-[16px]" />
+      );
+
+    if (isEncountered)
+      return (
+        <img
+          src={`/pokeball_encountered.png`}
+          className="m-1 h-[16px] w-[16px]"
+        />
+      );
+
+    return null;
+  };
+
   return (
     <Card>
+      <div className="flex">
+        <div className="p-2">{renderPokeballImage()}</div>
+        <div className="p-2 ml-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <EllipsisVertical
+                onClick={stopPropagation}
+                onMouseEnter={toggleHover}
+                onMouseLeave={toggleHover}
+                className="m-1 p-[2px] h-[20px] w-[20px] justify-self-end hover:bg-slate-200 hover:rounded-full"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuLabel>Appearance</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={showShiny}
+                onClick={stopPropagation}
+                onCheckedChange={setShowShiny}
+              >
+                Shiny
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Collection</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={isCaught}
+                onClick={handleCaughtClick}
+              >
+                Caught
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={isEncountered}
+                onClick={handleEncounteredClick}
+              >
+                Encountered
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
       <CardHeader>
         <header>
           <img
@@ -110,13 +270,13 @@ const PokemonEntryDetails = ({ pokemon, evolutions }: any) => {
             <div className="grid gap-2">
               <h4 className="font-bold capitalize">Height</h4>
               <span className="bg-slate-100 dark:bg-zinc-900 block rounded-full p-1">
-                0.7m
+                {pokemon?.height / 10}m
               </span>
             </div>
             <div className="grid gap-2">
               <h4 className="font-bold capitalize">Weight</h4>
               <span className="bg-slate-100 dark:bg-zinc-900 block rounded-full p-1">
-                6.9kg
+                {pokemon?.weight / 10}kg
               </span>
             </div>
           </section>

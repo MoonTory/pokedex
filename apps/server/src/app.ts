@@ -8,6 +8,7 @@ app.use(express.urlencoded({ extended: true }));
 //cors
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "*");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   next();
 });
@@ -51,7 +52,10 @@ app.post("/trainers", (req, res) => {
 
 app.get("/trainers/:id", (req, res) => {
   const { id } = req.params;
-  const trainer = trainers.find((t) => t.id === parseInt(id));
+  let trainer = trainers.find((t) => t.id === parseInt(id));
+
+  if (!trainer) trainer = trainers.find((t) => t.name === id);
+
   if (trainer) res.json(trainer);
   else {
     res.status(404).send("Trainer not found");
@@ -76,10 +80,12 @@ app.post("/trainers/:id/pokemons", (req, res) => {
 app.put("/trainers/:id/pokemons/:pokemonId", (req, res) => {
   const { id, pokemonId } = req.params;
   const { encountered, caught } = req.body;
+
   const record = pokemonRecords.find(
     (pr) =>
       pr.trainerId === parseInt(id) && pr.pokemonId === parseInt(pokemonId)
   );
+
   if (record) {
     record.encountered =
       encountered !== undefined ? encountered : record.encountered;

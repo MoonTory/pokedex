@@ -3,6 +3,8 @@ import { Outlet } from "react-router";
 import { Link, useSearchParams } from "react-router-dom";
 import { CircleUser, Package2, Search, Menu } from "lucide-react";
 
+import { FilterMenu } from "./FilterMenu";
+
 import {
   Input,
   Button,
@@ -16,22 +18,33 @@ import {
   DropdownMenuContent,
   DropdownMenuSeparator,
 } from "@/components/ui";
+import { useAuth } from "@/context";
 import { ThemeToggle } from "@/components/blocs";
 
 export const RootLayout: React.FC<React.PropsWithChildren> = () => {
+  const auth = useAuth();
   const [searchParams, setSearchParams] = useSearchParams({
     search: "",
   });
 
   const search = searchParams.get("search");
 
-  const debouncedSubmit = useDebounce((e) => {
-    setSearchParams({ search: e.search.value });
-  }, 100);
+  const debouncedSubmit = useDebounce(
+    (e) =>
+      setSearchParams(
+        (prev) => {
+          prev.set("search", e.search.value);
+
+          return prev;
+        },
+        { replace: true }
+      ),
+    250
+  );
 
   return (
-    <section className="bg-[#F6F8FC] dark:bg-muted/40 h-screen font-outfit overflow-y-auto bg-[url(/pokeball-icon.png)] dark:bg-none bg-no-repeat bg-[110%_-20%] overflow-x-hidden">
-      <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+    <section className="bg-[#F6F8FC] dark:bg-muted/40 h-screen font-outfit overflow-y-auto bg-[url(/pokeball-icon.png)] dark:bg-none bg-no-repeat bg-[110%_-15%] overflow-x-hidden">
+      <header className="sticky top-0 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 z-50">
         <nav className="hidden flex-col gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-8">
           <Link
             to="/"
@@ -44,13 +57,13 @@ export const RootLayout: React.FC<React.PropsWithChildren> = () => {
             to="/"
             className="text-foreground transition-colors hover:text-foreground"
           >
-            Pokedex
+            Pokemon
           </Link>
           <Link
-            to="/trainer/1"
+            to={`/trainer/${auth.state.user?.id}/collection`}
             className="text-muted-foreground transition-colors hover:text-foreground text-center"
           >
-            Trainer Collection
+            Your Collection
           </Link>
         </nav>
         <Sheet>
@@ -77,17 +90,21 @@ export const RootLayout: React.FC<React.PropsWithChildren> = () => {
                 Pokedex
               </Link>
               <Link
-                to="/trainer/1"
+                to={`/trainer/${auth.state.user?.id}/collection`}
                 className="text-muted-foreground hover:text-foreground"
               >
-                Collection
+                Your Collection
               </Link>
             </nav>
           </SheetContent>
         </Sheet>
         <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
+          <div className="ml-auto">
+            <FilterMenu />
+          </div>
+
           <form
-            className="ml-auto flex-1 sm:flex-initial"
+            className=" flex-1 sm:flex-initial"
             id="search-form"
             role="search"
           >
@@ -122,10 +139,7 @@ export const RootLayout: React.FC<React.PropsWithChildren> = () => {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Support</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={auth.logout}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

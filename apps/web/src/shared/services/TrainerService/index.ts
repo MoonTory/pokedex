@@ -3,13 +3,13 @@ import { fetchUrl, postUrl, putUrl } from "@/lib/axios";
 const BASE_URL = "http://localhost:8080/";
 
 export type Trainer = {
-  id: number;
+  id: string;
   name: string;
 };
 
 export type PokemonRecord = {
-  trainerId: number;
-  pokemonId: number;
+  trainerId: string;
+  pokemonId: string;
   encountered: boolean;
   caught: boolean;
 };
@@ -30,13 +30,30 @@ export async function addTrainer(name: string) {
   return newTrainer;
 }
 
-export async function getTrainerById(id: number) {
-  const trainer = await fetchUrl<Trainer>(`${BASE_URL}trainers/${id}`);
+export async function getTrainerById(id: string | number) {
+  try {
+    const trainer = await fetchUrl<Trainer>(`${BASE_URL}trainers/${id}`);
+    return trainer;
+  } catch (error) {
+    return undefined;
+  }
+}
+
+export async function getTrainerByName(trainerName: string) {
+  // return undefined if not found
+  const trainer = await fetchUrl<Trainer>(
+    `${BASE_URL}trainers?name=${trainerName}`
+  );
+
+  if (!trainer) {
+    return undefined;
+  }
+
   return trainer;
 }
 
 export async function getPokemonRecordsByTrainerId(
-  trainerId: number
+  trainerId: string
 ): Promise<PokemonRecord[]> {
   const records = await fetchUrl<PokemonRecord[]>(
     `${BASE_URL}trainers/${trainerId}/pokemons`
@@ -45,8 +62,8 @@ export async function getPokemonRecordsByTrainerId(
 }
 
 export async function addPokemonRecord(
-  trainerId: number,
-  pokemonId: number,
+  trainerId: string,
+  pokemonId: string,
   encountered: boolean,
   caught: boolean
 ) {
@@ -61,8 +78,8 @@ export async function addPokemonRecord(
 }
 
 export async function updatePokemonRecord(
-  trainerId: number,
-  pokemonId: number,
+  trainerId: string,
+  pokemonId: string,
   encountered?: boolean,
   caught?: boolean
 ) {

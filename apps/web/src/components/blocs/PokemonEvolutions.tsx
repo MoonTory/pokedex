@@ -20,13 +20,16 @@ export const PokemonEvolutions = ({ evolutions }: any) => {
           )}
           <button
             onClick={() => navigate(`/pokemon/${evolution.pokemon.name}`)}
-            className="hover:bg-slate-100 transition-colors rounded-3xl"
+            className="hover:bg-slate-100 transition-colors rounded-3xl text-center"
           >
             <img
               className="cursor-pointer"
               src={renderSprite(evolution.pokemon)}
               alt={`${evolution.pokemon.name}-image`}
             />
+            <div className="text-center capitalize">
+              {evolution.pokemon.name}
+            </div>
           </button>
         </article>
       ))}

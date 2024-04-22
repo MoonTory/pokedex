@@ -2,27 +2,45 @@ import * as React from "react";
 import { useNavigate } from "react-router";
 import { EllipsisVertical } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 
-import { cn, stopPropagation } from "@/lib/utils";
 import {
+  Badge,
   DropdownMenu,
+  LoadingSkeleton,
   DropdownMenuLabel,
   DropdownMenuContent,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu";
-import { pokemonDetailsQuery } from "@/routes/loaders/pokedex";
+} from "@/components/ui";
+import { useAuth } from "@/context";
+import { cn, stopPropagation } from "@/lib/utils";
+
 import { colorByType } from "@/contants/pokemon-color";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
-import { useSearchParams } from "react-router-dom";
+
+import { pokemonDetailsQuery } from "@/routes/loaders/pokedex.loader";
+import { trainerCollectionQuery } from "@/routes/loaders/trainers.loader";
+import { TrainerService } from "@/shared/services";
+import { useToast } from "@/hooks/use-toast";
 
 const PokedexEntry: React.FC<{ name: string }> = ({ name }) => {
+  const { toast } = useToast();
+
   const navigate = useNavigate();
 
+  const {
+    state: { user },
+  } = useAuth();
+
+  const { data: collection, refetch } = useQuery({
+    ...trainerCollectionQuery(user?.id ?? "1"),
+    refetchInterval: 1000 * 60 * 5,
+  });
+
   const [searchParams, setSearchParams] = useSearchParams({
-    tags: [],
+    types: [],
   });
 
   const { data: pokemon, isLoading } = useQuery(pokemonDetailsQuery(name));
@@ -34,6 +52,22 @@ const PokedexEntry: React.FC<{ name: string }> = ({ name }) => {
     false
   );
 
+  const findInCollection = (pokemonId?: string) =>
+    collection?.find((c) => c.pokemonId === pokemonId);
+
+  const [isCaught, setIsCaught] = React.useState(
+    findInCollection(pokemon?.id)?.caught
+  );
+
+  const [isEncountered, setIsEncountered] = React.useState(
+    findInCollection(pokemon?.id)?.encountered
+  );
+
+  React.useEffect(() => {
+    setIsCaught(findInCollection(pokemon?.id)?.caught);
+    setIsEncountered(findInCollection(pokemon?.id)?.encountered);
+  }, [collection]);
+
   const toggleHover = () => setIsHovered(!isHovered);
 
   const renderShinySprite = (pokemon: any) =>
@@ -44,18 +78,92 @@ const PokedexEntry: React.FC<{ name: string }> = ({ name }) => {
 
   const handleClick = () => navigate(`/pokemon/${name}`);
 
-  const handleTagClick = (e: any) => (tag: string) => {
+  const handleCaughtClick = async (e: any) => {
     stopPropagation(e);
 
-    const tags = (searchParams.get("tags") || "").split(",");
+    let record = findInCollection(pokemon?.id);
 
-    const newTags = tags.includes(tag)
-      ? tags.filter((t) => t !== tag)
-      : [...tags, tag];
+    if (!record) {
+      await TrainerService.addPokemonRecord(user!.id, pokemon!.id, false, true);
+    } else {
+      record = await TrainerService.updatePokemonRecord(
+        user!.id,
+        pokemon!.id,
+        record.encountered,
+        !record.caught
+      );
+    }
 
-    setSearchParams({
-      tags: newTags.join(","),
+    await refetch();
+
+    toast({
+      title: "Pokemon Caught",
+      description: `You ${isCaught ? "removed" : "added"} ${
+        pokemon?.name
+      } to your collection`,
     });
+  };
+
+  const handleEncounteredClick = async (e: any) => {
+    stopPropagation(e);
+
+    let record = findInCollection(pokemon?.id);
+
+    if (!record) {
+      await TrainerService.addPokemonRecord(user!.id, pokemon!.id, true, false);
+    } else {
+      record = await TrainerService.updatePokemonRecord(
+        user!.id,
+        pokemon!.id,
+        !record.encountered,
+        record.caught
+      );
+    }
+
+    await refetch();
+
+    toast({
+      title: "Pokemon Encountered",
+      description: `You ${isCaught ? "removed" : "added"} ${
+        pokemon?.name
+      } to your collection`,
+    });
+  };
+
+  const handleTagClick = (e: any) => (type: string) => {
+    stopPropagation(e);
+
+    const types = (searchParams.get("types") || "").split(",");
+
+    const newTypes = types.includes(type)
+      ? types.filter((t) => t !== type)
+      : [...types, type];
+
+    setSearchParams(
+      (prev) => {
+        prev.set("types", newTypes.join(","));
+
+        return prev;
+      },
+      { replace: true }
+    );
+  };
+
+  const renderPokeballImage = () => {
+    if (isCaught)
+      return (
+        <img src={`/pokeball_caught.png`} className="m-1 h-[16px] w-[16px]" />
+      );
+
+    if (isEncountered)
+      return (
+        <img
+          src={`/pokeball_encountered.png`}
+          className="m-1 h-[16px] w-[16px]"
+        />
+      );
+
+    return null;
   };
 
   return (
@@ -69,7 +177,7 @@ const PokedexEntry: React.FC<{ name: string }> = ({ name }) => {
       )}
     >
       <header className="h-9 flex justify-between">
-        <img src={`/pokeball_caught.png`} className="m-1 h-[16px] w-[16px]" />
+        {renderPokeballImage()}
 
         <LoadingSkeleton
           isLoading={isLoading}
@@ -104,6 +212,20 @@ const PokedexEntry: React.FC<{ name: string }> = ({ name }) => {
               Shiny
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
+            <DropdownMenuLabel>Collection</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem
+              checked={isCaught}
+              onClick={handleCaughtClick}
+            >
+              Caught
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={isEncountered}
+              onClick={handleEncounteredClick}
+            >
+              Encountered
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
@@ -119,17 +241,17 @@ const PokedexEntry: React.FC<{ name: string }> = ({ name }) => {
       <LoadingSkeleton isLoading={isLoading} width={150}>
         <ul className="flex gap-2 justify-center">
           {pokemon?.types.map((type: any) => (
-            <li
+            <Badge
               onClick={(e) => handleTagClick(e)(type.type.name)}
               onMouseEnter={toggleHover}
               onMouseLeave={toggleHover}
-              className={`p-1 rounded-md px-2 text-white text-sm hover:scale-110 ${
+              className={`text-sm hover:scale-110 ${
                 colorByType[type.type.name as keyof typeof colorByType]
               }`}
               key={type.type.name}
             >
               {type.type.name}
-            </li>
+            </Badge>
           ))}
         </ul>
       </LoadingSkeleton>

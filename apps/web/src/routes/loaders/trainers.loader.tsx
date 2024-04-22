@@ -1,20 +1,19 @@
 import { LoaderFunctionArgs } from "react-router";
 import { QueryClient } from "@tanstack/react-query";
 
-import { pokedexLoader, PokedexLoaderReturnType } from "./pokedex";
-
-import { combineLoaders } from "@/lib/router";
 import {
-  getPokemonRecordsByTrainerId,
   getTrainers,
+  getPokemonRecordsByTrainerId,
 } from "@/shared/services/TrainerService";
+import { combineLoaders } from "@/lib/router";
+import { IPokemonContext } from "@/context/pokemon/types";
 
 export const trainerListQuery = (q: string | null) => ({
   queryKey: ["trainers", "list", q ?? "all"],
   queryFn: async () => getTrainers(),
 });
 
-export const trainerCollectionQuery = (trainerId: number) => ({
+export const trainerCollectionQuery = (trainerId: string) => ({
   reftchInterval: 1000 * 60 * 5,
   queryKey: ["trainers", "collection", trainerId],
   queryFn: async () => getPokemonRecordsByTrainerId(trainerId),
@@ -38,28 +37,26 @@ export type TrainerCollectionLoaderReturnType = Awaited<
 >;
 
 export const trainerCollectionLoader =
-  (queryClient: QueryClient) => async (args: LoaderFunctionArgs) => {
+  (_context: any) => async (args: LoaderFunctionArgs) => {
     const { trainerId } = args.params as { trainerId: string };
 
     if (isNaN(parseInt(trainerId))) {
       throw new Error("Invalid trainer id");
     }
 
-    const query = trainerCollectionQuery(parseInt(trainerId));
+    // const query = trainerCollectionQuery(parseInt(trainerId));
 
-    const collection = await queryClient.ensureQueryData({
-      ...query,
-      staleTime: 1000 * 60 * 5,
-    });
+    // const collection = await queryClient.ensureQueryData({
+    //   ...query,
+    //   staleTime: 1000 * 60 * 5,
+    // });
 
-    return { collection };
+    return { collection: [] };
   };
 
-type TrainersPageLoaderReturnType = TrainerCollectionLoaderReturnType &
-  PokedexLoaderReturnType;
+type TrainersPageLoaderReturnType = TrainerCollectionLoaderReturnType;
 
-export const trainersPageLoader = (queryClient: QueryClient) =>
-  combineLoaders<TrainersPageLoaderReturnType>(queryClient, [
+export const trainersPageLoader = (context: IPokemonContext) =>
+  combineLoaders<TrainersPageLoaderReturnType, IPokemonContext>(context, [
     trainerCollectionLoader,
-    pokedexLoader,
   ]);

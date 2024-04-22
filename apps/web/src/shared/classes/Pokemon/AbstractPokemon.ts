@@ -1,28 +1,31 @@
 import { PokemonDef } from "../../types";
 
 export abstract class AbstractPokemon {
+  id: string;
   name: string;
-  types: { type: { name: string }; url: string }[];
   weight: number;
   height: number;
   order: number;
+  types: { name: string; url: string }[];
 
   constructor(pokemon: PokemonDef.Pokemon) {
+    this.id = pokemon.id;
     this.name = pokemon.name;
-    this.types = pokemon.types;
+    this.order = pokemon.order;
     this.weight = pokemon.weight;
     this.height = pokemon.height;
-    this.order = pokemon.order;
+    this.types = pokemon.types.map((type) => ({
+      name: type.type.name,
+      url: type.type.url,
+    }));
   }
 
   abstract getName(): string;
   abstract getTypesString(): string[];
-  // TODO: Properly Type Types depending on the implementation
-  abstract getTypes(): { type: { name: string }; url: string }[];
+  abstract getTypes(): { name: string; url: string }[];
   abstract getWeight(): number;
   abstract getHeight(): number;
   abstract getOrder(): number;
-  // TODO Properly Type Evolutions depending on implementation
   abstract getEvolutions(): unknown;
   abstract getNextEvolutionName(): string;
 }

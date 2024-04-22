@@ -1,9 +1,17 @@
 export interface Pokemon {
+  id: string;
   name: string;
-  types: { type: { name: string }; url: string }[];
-  weight: number;
-  height: number;
   order: number;
+  height: number;
+  weight: number;
+  types: PokemonType[];
+}
+
+export interface PokemonType {
+  type: {
+    name: string;
+    url: string;
+  };
 }
 
 export type PokemonStat = {

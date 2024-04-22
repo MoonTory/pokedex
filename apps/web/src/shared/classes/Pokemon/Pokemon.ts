@@ -1,14 +1,14 @@
 import { PokemonDef } from "../../types";
-import { getPokemonEvolutionsByName } from "../../services";
+import { getPokemonEvolutionsByName } from "../../services/PokemonService";
 import { AbstractPokemon } from "./AbstractPokemon";
 
 export class Pokemon extends AbstractPokemon {
   private evolutions: any[] = [];
 
-  constructor(pokemon: PokemonDef.Pokemon) {
+  constructor(pokemon: PokemonDef.Pokemon, evolutions?: any[]) {
     super(pokemon);
 
-    this.initialize();
+    this.evolutions = evolutions || [];
   }
 
   // used for testing.
@@ -25,7 +25,7 @@ export class Pokemon extends AbstractPokemon {
   }
 
   getTypesString(): string[] {
-    return this.types.map(({ type: { name } }) => name);
+    return this.types.map(({ name }) => name);
   }
 
   getTypes() {

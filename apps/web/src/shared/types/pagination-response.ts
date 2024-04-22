@@ -1,6 +1,6 @@
 export type PaginationResponse<T> = {
   count: number;
   next: string | null;
-  previouse: string | null;
+  previous: string | null;
   results: T[];
 };

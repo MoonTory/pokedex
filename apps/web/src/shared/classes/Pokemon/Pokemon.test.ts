@@ -3,8 +3,9 @@ import { describe, expect, test, beforeAll } from "@jest/globals";
 import { Pokemon } from "./Pokemon";
 
 const TEST_POKEMON_DATA = {
+  id: "25",
   name: "pikachu",
-  types: [{ type: { name: "electric" }, url: "" }],
+  types: [{ type: { name: "electric", url: "" } }],
   weight: 60,
   height: 4,
   order: 35,

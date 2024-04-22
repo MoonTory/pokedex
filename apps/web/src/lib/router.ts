@@ -1,17 +1,16 @@
-import { QueryClient } from "@tanstack/react-query";
 import { LoaderFunctionArgs } from "react-router";
 
-export type LoaderFunction<T> = (
-  queryClient: QueryClient
+export type LoaderFunction<T, C> = (
+  context: C
 ) => (args: LoaderFunctionArgs) => Promise<T>;
 
-export function combineLoaders<T>(
-  queryClient: QueryClient,
-  loaders: LoaderFunction<any>[]
+export function combineLoaders<T, C>(
+  context: C,
+  loaders: LoaderFunction<any, any>[]
 ): (params?: LoaderFunctionArgs) => Promise<T> {
   return async (params?: any) => {
     const results = await Promise.all(
-      loaders.map((loader) => loader(queryClient)(params))
+      loaders.map((loader) => loader(context)(params))
     );
 
     return Object.assign({}, ...results);

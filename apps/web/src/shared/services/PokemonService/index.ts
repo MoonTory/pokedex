@@ -1,13 +1,24 @@
 import { fetchUrl } from "@/lib/axios";
+import { PokemonDef } from "@/shared/types";
 import { PaginationResponse } from "@/shared/types/pagination-response";
 
-type PokemonListResponse = PaginationResponse<{ name: string; url: string }>;
+export type PokemonListResponse = PaginationResponse<{
+  name: string;
+  url: string;
+}>;
 
 const BASE_URL = "https://pokeapi.co/api/v2/";
+export const POKEMON_API_URL = `${BASE_URL}pokemon`;
 
-export async function getPokemonList() {
+export async function fetchPokemonList(url: string) {
+  return await fetchUrl<PokemonListResponse>(url);
+}
+
+export async function getPokemonList(limit: number = 40, offset?: number) {
   const { results } = await fetchUrl<PokemonListResponse>(
-    `${BASE_URL}pokemon?limit=1400`
+    `${BASE_URL}pokemon?${limit ? `limit=${limit}` : ""}${
+      offset ? `&offset=${offset}` : ""
+    }`
   );
 
   return results;
@@ -36,15 +47,24 @@ export async function getPokemonEvolutionsByName(
   return await extractEvolutions(evolutionChainData.chain, addDetails);
 }
 
-export async function getPokemonEvolutions(pokemonData: any) {
+export async function getPokemonEvolutions(
+  pokemonData: any,
+  addDetails?: boolean
+) {
   const speciesData = await fetchUrl(pokemonData.species.url);
   const evolutionChainData = await fetchUrl(speciesData.evolution_chain.url);
 
-  return await extractEvolutions(evolutionChainData.chain);
+  return await extractEvolutions(evolutionChainData.chain, addDetails);
+}
+
+export async function getPokemonById(id: string) {
+  return await fetchUrl<PokemonDef.Pokemon>(`${BASE_URL}pokemon/${id}`);
 }
 
 export async function getPokemon(pokemonName: string) {
-  return await fetchUrl(`${BASE_URL}pokemon/${pokemonName}`);
+  return await fetchUrl<PokemonDef.Pokemon>(
+    `${BASE_URL}pokemon/${pokemonName}`
+  );
 }
 
 async function extractEvolutions(
@@ -54,9 +74,8 @@ async function extractEvolutions(
   let evolutions: any[] = [];
 
   async function fetchEvolutionDetails(stage: any) {
-    const pokemonDetails = await getPokemonCompleteData(stage.species.name);
-
     if (addDetails) {
+      const pokemonDetails = await getPokemonCompleteData(stage.species.name);
       stage.pokemon = pokemonDetails;
     }
 
